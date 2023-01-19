@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:bloc/bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -37,7 +40,7 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    late final Bloc bloc;
+    //late final Bloc bloc;
     return Scaffold();
   }
 }
@@ -75,6 +78,43 @@ extension UrlString on PersonUrl{
     }
   }
 }
+//download instance, parse json, and return list of person.
+Future<Iterable<Person>> getPersons (String url) => HttpClient().getUrl(Uri.parse(url)).then((req) => req.close()).then((resp) => resp.transform(utf8.decoder).join()).then((str) =>  json.decode(str) as List<dynamic>).then((list) => list.map((e) => Person.fromJson(e)));
 
+@immutable 
+class fetchResult{
+  final Iterable<Person> person;
+  final bool isRetrivedFromcache;
 
+  const fetchResult({required this.person, required this.isRetrivedFromcache});
+
+  @override
+  String toString() => 'FetchedResult {isRetrivedFromcache : ${isRetrivedFromcache}, person : ${person}';
+
+   
+}
+
+class PersonsBloc extends Bloc<LoadPersonAction, fetchResult?> {
+  final Map<PersonUrl, Iterable<Person>> _cache = {};
+  PersonsBloc() : super(null){
+    on((event, emit) {
+      final url = event.url;
+      if(_cache.containsKey(url))
+      {
+        final cachedPerson = _cache['url']!;
+        final result = fetchResult(person: cachedPerson, isRetrivedFromcache: true);
+        emit(result);
+
+      }
+      else{
+        final person = await getPersons(url.urlString);
+        _cache[url] = person;
+        final result = fetchResult(person: person, isRetrivedFromcache: false);
+        emit(result);
+      }
+
+      }
+    })
+  }
+}
 
