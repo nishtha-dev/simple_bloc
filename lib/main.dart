@@ -4,7 +4,11 @@ import 'dart:io';
 import 'package:bloc/bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+//import 'dart: developers' as devtools show log;
 
+// extension Log on Object{
+//   void log() => devtools.log(toString());
+// }
 
 void main() {
   runApp(const MyApp());
@@ -30,9 +34,18 @@ class MyApp extends StatelessWidget {
         // is not restarted.
         primarySwatch: Colors.blue,
       ),
-      home: const HomePage(),
+      home: BlocProvider(
+        create: (context) => PersonsBloc(),
+        child: const HomePage()),
     );
   }
+}
+
+const List<String> names = ["foo", "bar",];
+
+void testIt()
+{
+  final baz = names[10]; 
 }
 
 class HomePage extends StatelessWidget {
@@ -41,7 +54,40 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     //late final Bloc bloc;
-    return Scaffold();
+    return Scaffold(
+      appBar: AppBar(title: const Text('Bloc Sample'),),
+      body: Column(
+      children: [
+        Row(
+          children: [
+            TextButton(onPressed: (() {
+              context.read<PersonsBloc>().add(const LoadPersonAction(url: PersonUrl.person1),);
+            }), child: const Text('Load json #1')),
+            TextButton(onPressed: (() {
+              context.read<PersonsBloc>().add(const LoadPersonAction(url: PersonUrl.person2));
+            }), child: const Text('Load json #2'))
+          ],
+        ),
+        BlocBuilder<PersonsBloc, fetchResult?>(
+          buildWhen: (previousResult, currentResult) {
+            return previousResult?.person != currentResult?.person;
+          },
+          builder: ((context, fetchResult) {
+            final persons = fetchResult?.person;
+            if (persons== null) {
+              return SizedBox();
+            }
+            return Expanded(child: ListView.builder( 
+              itemCount: persons.length, 
+            itemBuilder: (context, index) {
+              final person = persons[index]!;
+              return  ListTile(title: Text(person.name),);
+            },));
+           return Container();
+        }))
+      ],
+      ),
+    );
   }
 }
 
@@ -66,6 +112,16 @@ class Person{
 
   Person(this.name, this.age);
   Person.fromJson(Map<String, dynamic> json) : name= json["name"] as String, age= json["age"] as int;
+
+  @override
+  String toString() => "Person {name: $name, age: $age";
+}
+
+extension Subscript<T> on Iterable<T>
+{
+  T? operator [] (int index){
+    length> index ? elementAt(index) : null;
+  }
 }
 
 extension UrlString on PersonUrl{
@@ -96,8 +152,8 @@ class fetchResult{
 
 class PersonsBloc extends Bloc<LoadPersonAction, fetchResult?> {
   final Map<PersonUrl, Iterable<Person>> _cache = {};
-  PersonsBloc() : super(null){
-    on((event, emit) {
+  PersonsBloc () : super(null) {
+    on((event, emit) async{
       final url = event.url;
       if(_cache.containsKey(url))
       {
@@ -113,8 +169,8 @@ class PersonsBloc extends Bloc<LoadPersonAction, fetchResult?> {
         emit(result);
       }
 
-      }
-    })
+      } );
+    }
   }
-}
+
 
